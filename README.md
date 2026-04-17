@@ -41,9 +41,9 @@ Age, Fluid_Electrolyte_Disorder, Cardiac_Arrhythmia, Charlson Comorbidity Index,
 
 **## Usage (Coming Soon)**
 
-Build the Graph: > ```bash
+Build the Graph: 
 python build_graph_fused.py --dataset synthetic_data
 
 2. **Train Tab-BertGCN:**
-```bash
+
 python train.py --dataset synthetic_data --epochs 50 --batch_size 64
