@@ -19,6 +19,8 @@ Key modifications include:
 * **Dimensionality Alignment:** A trainable linear projection layer that maps the $p$-dimensional tabular data (e.g., 39 features) into the exact same dense continuous space as the 384-dimensional Bioformer text embeddings.
 * **Multimodal Node Fusion:** Aggregating the text and tabular representations prior to graph propagation.
 
+⚠️ Repository Status: The source code for this project is currently undergoing final formatting and documentation. The complete suite of scripts (including model.py and train.py) and the synthetic dataset will be pushed to this public repository during the peer-review process.
+
 ## Data Availability & Privacy Notice
 **Due to strict patient privacy regulations, the original Electronic Health Record (EHR) dataset from the Indiana Network for Patient Care (INPC) cannot be shared.** However, to facilitate reproducibility and allow researchers to test the `Tab-BertGCN` architecture, we have provided a **synthetic dummy dataset** in the `/data` folder. This dummy data perfectly mimics the structural format of our real data without containing any Protected Health Information (PHI).
 
@@ -36,3 +38,12 @@ To run this model on your own data, the text corpus and a corresponding `.tab` f
 ```text
 Age, Fluid_Electrolyte_Disorder, Cardiac_Arrhythmia, Charlson Comorbidity Index, Emergency..
 69, 1, 0, 3, 1
+
+**## Usage (Coming Soon)**
+
+Build the Graph: > ```bash
+python build_graph_fused.py --dataset synthetic_data
+
+2. **Train Tab-BertGCN:**
+```bash
+python train.py --dataset synthetic_data --epochs 50 --batch_size 64
