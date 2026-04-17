@@ -11,7 +11,7 @@ This project builds upon and significantly extends two excellent foundational re
 1. **[TextGCN](https://github.com/yao8839836/text_gcn):** Utilized for the initial construction of the heterogeneous Document-Word (TF-IDF) and Word-Word (PPMI) corpus graph.
 2. **[BertGCN](https://github.com/ZeroRin/BertGCN/tree/main):** Utilized as the base architecture for integrating transformer-derived text embeddings into the Graph Convolutional Network.
 
-## Our Novel Contributions (Tab-BertGCN)
+## Proposed Tab-BertGCN
 While the original BertGCN relies solely on text, our `Tab-BertGCN` introduces a multimodal fusion layer. We modified the training pipeline to simultaneously ingest clinical notes and structured clinical variables. 
 
 Key modifications include:
@@ -31,8 +31,8 @@ Key modifications include:
 ## Data Format Example
 To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. 
 
-**Example of `patient_123.tab`:**
+**Example of `tabular/patient_data.tab`:**
 (A comma-separated or tab-separated list of binary/continuous clinical features)
 ```text
-Age_Group_3, Fluid_Electrolyte_Disorder, Cardiac_Arrhythmia, PreOp_BUN
-1, 1, 0, 24.5
+Age, Fluid_Electrolyte_Disorder, Cardiac_Arrhythmia, Charlson Comorbidity Index, Emergency..
+69, 1, 0, 3, 1
