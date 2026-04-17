@@ -24,7 +24,7 @@ Key modifications include:
 
 ## Repository Structure
 * `/data/`: Contains the synthetic corpus, labels, and the `.tab` files for structured features.
-* `/build_graph.py`: Script (adapted from TextGCN) to calculate TF-IDF and PPMI and build the adjacency matrix.
+* `/build_graph_fused.py`: Script (adapted from TextGCN) to calculate TF-IDF and PPMI and build the adjacency matrix.
 * `/model.py`: Contains the `Tab-BertGCN` PyTorch class, including the tabular linear projection layer.
 * `/train.py`: The main training loop handling the multimodal data fusion and GCN propagation.
 
