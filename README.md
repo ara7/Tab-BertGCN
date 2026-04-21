@@ -1,5 +1,5 @@
 # Tab-BertGCN
-Tab-BertGCN
+A multimodal GNN architecture (Tab-BertGCN) designed to enhance early prediction of postoperative delirium by jointly modeling unstructured clinical text and tabular clinical features.
 # Tab-BertGCN: Multimodal Graph Learning for Postoperative Delirium Prediction
 
 This repository contains the official PyTorch implementation of the **Tab-BertGCN** architecture, as described in our manuscript: *"Graph-Based Multimodal Learning with Transformers for Postoperative Delirium Prediction."*
