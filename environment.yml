@@ -116,4 +116,4 @@ dependencies:
       - typing-extensions==4.1.1
       - xgboost==1.5.2
       - zipp==3.6.0
-prefix: /N/u/leara/Quartz/.conda/envs/bertgcn
+prefix: /N/u/leara/Quartz/.conda/envs/tabbertgcn
