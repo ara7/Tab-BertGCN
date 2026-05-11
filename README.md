@@ -25,7 +25,7 @@ Key modifications include:
 
 ## Repository Structure
 
-* `/data/`: Contains the synthetic corpus, labels, and `.tab` files for the structured tabular features. (**Synthetic data, Coming Soon...**)
+* `/data/`: Contains the synthetic corpus, labels, and `.tab` files for the structured tabular features.
 * `build_graph_delirium.py`: Script (adapted from TextGCN) to calculate TF-IDF and PPMI, and build the adjacency matrix.
 * `model/models.py`: Contains the `BertGCN_fusion` PyTorch class, which implements the core Tab-BertGCN architecture.
 * `train_tab_bert_gcn.py`: The main training loop handling multimodal data fusion and GCN propagation. Text propagation is inspired by the original BertGCN.
