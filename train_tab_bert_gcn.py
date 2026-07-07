@@ -8,6 +8,7 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import Accuracy, Loss
 from sklearn.metrics import accuracy_score
 import numpy as np
+import pandas as pd
 import os
 import shutil
 import argparse
@@ -15,10 +16,9 @@ import sys
 import logging
 from datetime import datetime
 from torch.optim import lr_scheduler
-from model import BertGCN_fusion, BertGAT #BertGCN
+from model import BertGCN_fusion, BertGCN_gated_fusion, BertGAT #BertGCN
 
 from sklearn.metrics import classification_report, roc_auc_score
-
 
 if th.cuda.is_available():
     device = th.device("cuda:0")
@@ -27,23 +27,65 @@ if th.cuda.is_available():
 else:
     device = th.device("cpu")
     print("No GPU available, using CPU.")
-model_path = "/path_to_Bioformer/bioformer-16L" #biobert"
+model_path = "/geode3/projects/IN-REGI-PDM/Delirium/Delirium-Workspace/ara-lena/new_algorithm/paper_3_again/saint/models_huggingface/bioformer-16L" #biobert"
+
+def compute_auc_ci(y_true, y_probs,
+                   n_bootstraps=1000,
+                   rng_seed=42):
+
+    bootstrapped_scores = []
+
+    rng = np.random.RandomState(rng_seed)
+
+    for _ in range(n_bootstraps):
+
+        indices = rng.randint(
+            0,
+            len(y_probs),
+            len(y_probs)
+        )
+
+        if len(np.unique(y_true[indices])) < 2:
+            continue
+
+        score = roc_auc_score(
+            y_true[indices],
+            y_probs[indices]
+        )
+
+        bootstrapped_scores.append(score)
+
+    bootstrapped_scores = np.array(
+        bootstrapped_scores
+    )
+
+    ci_lower = np.percentile(
+        bootstrapped_scores,
+        2.5
+    )
+
+    ci_upper = np.percentile(
+        bootstrapped_scores,
+        97.5
+    )
+
+    return ci_lower, ci_upper
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--max_length', type=int, default=1024, help='the input length for bert')#128
-parser.add_argument('--batch_size', type=int, default=8) #64
+parser.add_argument('--batch_size', type=int, default=8)#64
 parser.add_argument('-m', '--m', type=float, default=0.7, help='the factor balancing BERT and GCN prediction')
 parser.add_argument('--nb_epochs', type=int, default=50)
-parser.add_argument('--bert_init', type=str, default=model_path, #roberta-base
+parser.add_argument('--bert_init', type=str, default=model_path,
                     choices=['roberta-base', 'roberta-large', 'bert-base-uncased', 'bert-large-uncased'])
 parser.add_argument('--pretrained_bert_ckpt', default=None)
-parser.add_argument('--dataset', default='delirium_cam_icd_fusion', choices=['20ng', 'R8', 'R52', 'ohsumed', 'mr','dataset_small']) #delirium_fusion delirium_cam_icd_fusion_small
+parser.add_argument('--dataset', default='delirium_cam_icd_fusion_small', choices=['20ng', 'R8', 'R52', 'ohsumed', 'mr'])
 parser.add_argument('--checkpoint_dir', default=None, help='checkpoint directory, [bert_init]_[gcn_model]_[dataset] if not specified')
 parser.add_argument('--gcn_model', type=str, default='gcn', choices=['gcn', 'gat'])
 parser.add_argument('--gcn_layers', type=int, default=2)
 parser.add_argument('--n_hidden', type=int, default=200, help='the dimension of gcn hidden layer, the dimension for gat is n_hidden * heads')
 parser.add_argument('--heads', type=int, default=8, help='the number of attentionn heads for gat')
-parser.add_argument('--dropout', type=float, default=0.5) #0.3
+parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--gcn_lr', type=float, default=1e-3)
 parser.add_argument('--bert_lr', type=float, default=1e-5)
 
@@ -64,8 +106,9 @@ dropout = args.dropout
 gcn_lr = args.gcn_lr
 bert_lr = args.bert_lr
 
+
 if checkpoint_dir is None:
-    ckpt_dir = './checkpoint_fusion_model/{}_{}_{}'.format(bert_init, gcn_model, dataset)
+    ckpt_dir = './rerun_fresh_exp_7_tab_learnable_small/checkpoint/{}_{}_{}'.format(dataset, gcn_model, dataset)
 else:
     ckpt_dir = checkpoint_dir
 os.makedirs(ckpt_dir, exist_ok=True)
@@ -93,27 +136,31 @@ logger.info('checkpoints will be saved in {}'.format(ckpt_dir))
 
 # Data Preprocess
 adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, train_size, test_size = load_corpus(dataset)
-
+'''
+adj: n*n sparse adjacency matrix
+y_train, y_val, y_test: n*c matrices
+train_mask, val_mask, test_mask: n-d bool array
+'''
 
 # compute number of real train/val/test/word nodes and number of classes
 nb_node = features.shape[0]
 nb_train, nb_val, nb_test = train_mask.sum(), val_mask.sum(), test_mask.sum()
 nb_word = nb_node - nb_train - nb_val - nb_test
-#print('nb_word', nb_word)
 nb_class = y_train.shape[1]
-#print('nb_class', nb_class)
 
 # instantiate model according to class number
 if gcn_model == 'gcn':
-    model = BertGCN_fusion(nb_class=nb_class, pretrained_model=bert_init, m=m, gcn_layers=gcn_layers,
+    model = BertGCN_gated_fusion(nb_class=nb_class, pretrained_model=bert_init, m=m, gcn_layers=gcn_layers,
                     n_hidden=n_hidden, dropout=dropout)
+    '''model = BertGCN_fusion_VII_learnable(nb_class=nb_class, pretrained_model=bert_init, m=m, gcn_layers=gcn_layers,
+                    n_hidden=n_hidden, dropout=dropout)'''
 else:
     model = BertGAT(nb_class=nb_class, pretrained_model=bert_init, m=m, gcn_layers=gcn_layers,
                     heads=heads, n_hidden=n_hidden, dropout=dropout)
 
 
 if pretrained_bert_ckpt is not None:
-    ckpt = th.load(pretrained_bert_ckpt, map_location=device) #gpu
+    ckpt = th.load(pretrained_bert_ckpt, map_location=gpu)
     model.bert_model.load_state_dict(ckpt['bert_model'])
     model.classifier.load_state_dict(ckpt['classifier'])
 
@@ -127,8 +174,6 @@ with open(corpse_file, 'r') as f:
 
 def encode_input(text, tokenizer):
     input = tokenizer(text, max_length=max_length, truncation=True, padding='max_length', return_tensors='pt')
-#     print(input.keys())
-
     return input.input_ids, input.attention_mask
 
 
@@ -146,7 +191,6 @@ doc_mask  = train_mask + val_mask + test_mask
 
 # build DGL Graph
 adj_norm = normalize_adj(adj + sp.eye(adj.shape[0]))
-#adj_norm = normalize_adj(sp.eye(adj.shape[0]))
 g = dgl.from_scipy(adj_norm.astype('float32'), eweight_name='edge_weight')
 g.ndata['input_ids'], g.ndata['attention_mask'] = input_ids, attention_mask
 g.ndata['label'], g.ndata['train'], g.ndata['val'], g.ndata['test'] = \
@@ -156,20 +200,21 @@ g.ndata['cls_feats'] = th.zeros((nb_node, model.feat_dim))
 
 #start new
 # --- Tabular features ---
+# load your tabular features from a file or array
+# shape = (nb_train+nb_val+nb_test, 39)
 tab_features = np.loadtxt(f'data/tabular/{dataset}_shuffle.tab')
 tab_features = th.FloatTensor(tab_features)
+#print(tab_features)
+print(tab_features.shape) #Small dataset[40, 39]
 
+# assume original tabular features are stored in `tabular_data` of shape [nb_node, TAB_DIM]
 g.ndata['tab_feats_orig'] = th.zeros((nb_node, model.tabular_dim))
 g.ndata['tab_feats_orig'][:nb_train] = tab_features[:nb_train]
 g.ndata['tab_feats_orig'][nb_train:nb_train+nb_val] = tab_features[nb_train:nb_train+nb_val]
 g.ndata['tab_feats_orig'][nb_node-nb_test:] = tab_features[-nb_test:]
 
-
-g.ndata['tab_feats'] = th.zeros((nb_node, model.feat_dim))
-print(g.ndata['tab_feats_orig'].shape)
-print(g.ndata['tab_feats'].shape)
 print(g.ndata['cls_feats'].shape)
-#end new
+
 
 logger.info('graph information:')
 logger.info(str(g))
@@ -190,36 +235,24 @@ def update_feature():
     global model, g, doc_mask
     # no gradient needed, uses a large batchsize to speed up the process
     dataloader = Data.DataLoader(
-        Data.TensorDataset(
-            g.ndata['input_ids'][doc_mask],
-            g.ndata['attention_mask'][doc_mask],
-            g.ndata['tab_feats_orig'][doc_mask]
-        ),
-        batch_size=32 #1024
+        Data.TensorDataset(g.ndata['input_ids'][doc_mask], g.ndata['attention_mask'][doc_mask]),
+        batch_size=32 #64 #1024
     )
+    print('yo check this', dataloader.batch_size)
     with th.no_grad():
         model = model.to(device)#gpu
         model.eval()
         cls_list = []
-        fused_list = []
         for i, batch in enumerate(dataloader):
-            input_ids, attention_mask, tab_orig = [x.to(device) for x in batch] #gpu
+            input_ids, attention_mask = [x.to(device) for x in batch] #gpu
             output = model.bert_model(input_ids=input_ids, attention_mask=attention_mask)[0][:, 0]
             cls_list.append(output.cpu())
 
-            # Compute tabular projection and fusion for the background graph
-            tab_proj = model.tabular_proj(tab_orig)
-            fused = model.fusion_proj(th.cat([output, tab_proj], dim=1))
-            fused_list.append(fused.cpu())
         cls_feat = th.cat(cls_list, axis=0)
-        fused_feat = th.cat(fused_list, axis=0)
-    g = g.to(cpu)
-    g.ndata['cls_feats'][doc_mask] = cls_feat.detach().cpu()
-    # Initialize 'fused_feats' tensor if it doesn't exist (word nodes stay as zeros)
-    if 'fused_feats' not in g.ndata:
-        g.ndata['fused_feats'] = th.zeros((g.number_of_nodes(), model.feat_dim))
 
-    g.ndata['fused_feats'][doc_mask] = fused_feat.detach().cpu()
+    g = g.to(cpu)
+    g.ndata['cls_feats'][doc_mask] = cls_feat
+
     return g
 
 
@@ -227,11 +260,10 @@ optimizer = th.optim.Adam([
         {'params': model.bert_model.parameters(), 'lr': bert_lr},
         {'params': model.classifier.parameters(), 'lr': bert_lr},
         {'params': model.gcn.parameters(), 'lr': gcn_lr},
-        {'params': model.tabular_proj.parameters(), 'lr': bert_lr},
-        {'params': model.fusion_proj.parameters(), 'lr': bert_lr}
+        {'params': model.tabular_proj.parameters(), 'lr': gcn_lr},
     ], lr=1e-3
 )
-scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[30], gamma=0.1)
+scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[9], gamma=0.1) #30
 
 def collect_test_predictions(model, g, loader, device):
     model.eval()
@@ -257,10 +289,11 @@ def collect_test_predictions(model, g, loader, device):
     return np.array(all_preds), np.array(all_probs), np.array(all_labels)
 
 
+
 def train_step(engine, batch):
     global model, g, optimizer
     model.train()
-    model = model.to(device)#gpu
+    model = model.to(device) #gpu
     g = g.to(device) #gpu
     optimizer.zero_grad()
     (idx, ) = [x.to(device) for x in batch] #gpu
@@ -270,6 +303,7 @@ def train_step(engine, batch):
     y_true = g.ndata['label_train'][idx][train_mask]
     loss = F.nll_loss(y_pred, y_true)
     loss.backward()
+    #print('prit after loss.backward',model.alpha.grad)
     optimizer.step()
     g.ndata['cls_feats'].detach_()
     train_loss = loss.item()
@@ -297,7 +331,7 @@ def test_step(engine, batch):
     global model, g
     with th.no_grad():
         model.eval()
-        model = model.to(device)#gpu
+        model = model.to(device)#(gpu)
         g = g.to(device)#gpu
         (idx, ) = [x.to(device) for x in batch]#gpu
         y_pred = model(g, idx)
@@ -329,9 +363,49 @@ def log_training_results(trainer):
         "Epoch: {}  Train acc: {:.4f} loss: {:.4f}  Val acc: {:.4f} loss: {:.4f}  Test acc: {:.4f} loss: {:.4f}"
         .format(trainer.state.epoch, train_acc, train_nll, val_acc, val_nll, test_acc, test_nll)
     )
-
     preds, probs, labels = collect_test_predictions(model, g, idx_loader_test, device)
+    print(
+        "Prob range:",
+        probs.min(),
+        probs.max(),
+        probs.mean()
+    )
+    val_preds, val_probs, val_labels = collect_test_predictions(
+        model,
+        g,
+        idx_loader_val,
+        device
+    )
 
+    pd.DataFrame({
+        'epoch': trainer.state.epoch,
+        'label': labels,
+        'prob': probs,
+        'pred': preds
+    }).to_csv(
+        os.path.join(
+            ckpt_dir,
+            f'predictions_epoch_{trainer.state.epoch}.csv'
+        ),
+        index=False
+    )
+    pd.DataFrame({
+        'epoch': trainer.state.epoch,
+        'label': val_labels,
+        'prob': val_probs,
+        'pred': val_preds
+    }).to_csv(
+        os.path.join(
+            ckpt_dir,
+            f'val_predictions_epoch_{trainer.state.epoch}.csv'
+        ),
+        index=False
+    )
+    try:
+        val_auc = roc_auc_score(val_labels,val_probs)
+    except Exception:
+        val_auc= 0.0
+    #print(f"Gate = {th.sigmoid(model.alpha).item():.4f}")
     # classification report
     report = classification_report(labels, preds, digits=4)
     logger.info("\nTest Classification Report:\n" + report)
@@ -340,30 +414,58 @@ def log_training_results(trainer):
     if nb_class == 2:
         try:
             auc = roc_auc_score(labels, probs)
-            logger.info("Test ROC-AUC: {:.4f}".format(auc))
+            ci_lower, ci_upper = compute_auc_ci(
+                labels,
+                probs
+            )
+
+            logger.info(
+                f"Test ROC-AUC: {auc:.4f} "
+                f"(95% CI: {ci_lower:.4f}-{ci_upper:.4f})"
+            )
+            #logger.info("Test ROC-AUC: {:.4f}".format(auc))
         except Exception as e:
             logger.info("ROC-AUC error: {}".format(e))
     else:
         logger.info("ROC-AUC skipped (not binary classification)")
     # ----------------------------------------------------------
-
-    if val_acc > log_training_results.best_val_acc:
+    # Save every epoch for first 10 epochs
+    if trainer.state.epoch <= 10:
+        th.save(
+            {
+                'bert_model': model.bert_model.state_dict(),
+                'classifier': model.classifier.state_dict(),
+                'gcn': model.gcn.state_dict(),
+                'tabular_proj': model.tabular_proj.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'epoch': trainer.state.epoch,
+            },
+            os.path.join(
+                ckpt_dir,
+                f'checkpoint_epoch_{trainer.state.epoch}.pth'
+            )
+        )
+    if val_auc > log_training_results.best_val_auc:
         logger.info("New checkpoint")
         th.save(
             {
                 'bert_model': model.bert_model.state_dict(),
                 'classifier': model.classifier.state_dict(),
                 'gcn': model.gcn.state_dict(),
+                'tabular_proj': model.tabular_proj.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'epoch': trainer.state.epoch,
             },
             os.path.join(
-                ckpt_dir, 'checkpoint_fusion_model.pth'
+                ckpt_dir, 'best_tab_bert_gcn.pth'
+                #ckpt_dir, 'checkpoint_cam_icd_fusion_lambda_0_7_bioformer_full_length_latest.pth'
             )
         )
-        log_training_results.best_val_acc = val_acc
+        #log_training_results.best_val_acc = val_acc
+        log_training_results.best_val_auc = val_auc
 
 
-log_training_results.best_val_acc = 0
+log_training_results.best_val_auc = float('-inf') #0
+#g.cpu()
 g = update_feature()
 trainer.run(idx_loader, max_epochs=nb_epochs)
