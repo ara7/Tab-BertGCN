@@ -15,7 +15,7 @@ from scipy.spatial.distance import cosine
 if len(sys.argv) != 2:
 	sys.exit("Use: python build_graph.py <dataset>")
 
-datasets = ['delirium_fusion']
+datasets = ['sample_data']
 
 # build corpus
 dataset = sys.argv[1]
