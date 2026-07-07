@@ -31,7 +31,7 @@ Key modifications include:
 * `train_tab_bert_gcn.py`: The main training loop handling multimodal data fusion and GCN propagation. Text propagation is inspired by the original BertGCN.
 
 ## Data Format Example
-To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. All data needed for building graph exists in `/data/corpus/`, `/data/tabular/ and `/data/` folders respectively.
+To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. All data needed for building graph exists in `/data/corpus/`, `/data/tabular/` and `/data/` folders respectively.
 
 **Example of `tabular/sample_data.tab`:**
 (A tab-separated file containing the processed tabular features used by the model. Continuous variables have been standardized (z-score normalization), while categorical/binary variables have been encoded during preprocessing. This file below is a synthetic example for illustrating the expected input format.)
