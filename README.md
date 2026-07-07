@@ -41,11 +41,13 @@ Age  Fluid_Electrolyte_Disorder  Cardiac_Arrhythmia  Charlson_Comorbidity_Index 
 -1.2247  0.3333  0.1601  -0.2032  1.2865 ...
 ```
 
-**## Usage**
+## Usage
 
 Build the Graph: 
+```text
 python build_graph_delirium.py --dataset sample_data
-
-2. **Train Tab-BertGCN:**
-
-python train_tab_bert_gcn.py --dataset sample_data 
+```
+## Train Tab-BertGCN:
+```text
+python train_tab_bert_gcn.py --dataset sample_data
+```
