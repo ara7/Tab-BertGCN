@@ -1,5 +1,5 @@
 # Tab-BertGCN
-A multimodal GNN architecture (Tab-BertGCN) designed to enhance early prediction of postoperative delirium by jointly modeling unstructured clinical text and tabular clinical features.
+A multimodal GNN architecture (Tab-BertGCN) designed to enhance early prediction of postoperative delirium by jointly modeling unstructured clinical text with tabular clinical features through a learnable gated fusion mechanism prior to graph message passing while preserving unstructured clinical notes as the primary modality.
 # Graph-Based Multimodal Learning with Transformers for Early Postoperative Delirium Prediction
 
 This repository contains the official PyTorch implementation of the **Tab-BertGCN** architecture, as described in our manuscript: *"Graph-Based Multimodal Learning with Transformers for Postoperative Delirium Prediction."*
@@ -17,7 +17,7 @@ While the original BertGCN relies solely on text, our `Tab-BertGCN` introduces a
 Key modifications include:
 * **The `.tab` Data Pipeline:** We introduced a parallel data loader that reads structured patient features from custom `.tab` files.
 * **Dimensionality Alignment:** A trainable linear projection layer that maps the $p$-dimensional tabular data (e.g., 39 features) into the exact same dense continuous space as the 384-dimensional Bioformer text embeddings.
-* **Multimodal Node Fusion:** Aggregating the text and tabular representations prior to graph propagation.
+* **Multimodal Node Fusion:** Integrating the text and tabular representations prior to graph propagation using patient-specific gating mechanism.
 
 ## Data Availability & Privacy Notice
 **Due to strict patient privacy regulations, the original Electronic Health Record (EHR) dataset from the Indiana Network for Patient Care (INPC) cannot be shared.** However, to facilitate reproducibility and allow researchers to test the `Tab-BertGCN` architecture, we have provided a **synthetic dummy dataset** in the `/data` folder. This dummy data perfectly mimics the structural format of our real data without containing any Protected Health Information (PHI).
@@ -25,13 +25,13 @@ Key modifications include:
 
 ## Repository Structure
 
-* `/data/`: Contains the synthetic corpus, labels, and `.tab` files for the structured tabular features (sample_data).
+* `/data/`: Contains the synthetic/sample corpus, labels, and `.tab` files for the structured tabular features (sample_data).
 * `build_graph_delirium.py`: Script (adapted from TextGCN) to calculate TF-IDF and PPMI, and build the adjacency matrix.
-* `model/models.py`: Contains the `BertGCN_fusion` PyTorch class, which implements the core Tab-BertGCN architecture.
+* `model/models.py`: Contains the `BertGCN_gated_fusion` PyTorch class, which implements the core Tab-BertGCN architecture.
 * `train_tab_bert_gcn.py`: The main training loop handling multimodal data fusion and GCN propagation. Text propagation is inspired by the original BertGCN.
 
 ## Data Format Example
-To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. 
+To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. All data needed for building graph exists in `/data/corpus/`, `/data/tabular/ and `/data/` folders respectively.
 
 **Example of `tabular/sample_data.tab`:**
 (A tab-separated file containing the processed tabular features used by the model. Continuous variables have been standardized (z-score normalization), while categorical/binary variables have been encoded during preprocessing. This file below is a synthetic example for illustrating the expected input format.)
