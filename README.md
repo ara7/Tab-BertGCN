@@ -25,7 +25,7 @@ Key modifications include:
 
 ## Repository Structure
 
-* `/data/`: Contains the synthetic corpus, labels, and `.tab` files for the structured tabular features.
+* `/data/`: Contains the synthetic corpus, labels, and `.tab` files for the structured tabular features (sample_data).
 * `build_graph_delirium.py`: Script (adapted from TextGCN) to calculate TF-IDF and PPMI, and build the adjacency matrix.
 * `model/models.py`: Contains the `BertGCN_fusion` PyTorch class, which implements the core Tab-BertGCN architecture.
 * `train_tab_bert_gcn.py`: The main training loop handling multimodal data fusion and GCN propagation. Text propagation is inspired by the original BertGCN.
@@ -33,17 +33,19 @@ Key modifications include:
 ## Data Format Example
 To run this model on your own data, the text corpus and a corresponding `.tab` file is needed. 
 
-**Example of `tabular/patient_data.tab`:**
-(A comma-separated or tab-separated list of binary/continuous clinical features)
+**Example of `tabular/sample_data.tab`:**
+(A tab-separated file containing the processed tabular features used by the model. Continuous variables have been standardized (z-score normalization), while categorical/binary variables have been encoded during preprocessing. This file below is a synthetic example for illustrating the expected input format.)
+
 ```text
-Age, Fluid_Electrolyte_Disorder, Cardiac_Arrhythmia, Charlson Comorbidity Index, Emergency..
-69, 1, 0, 3, 1
+Age  Fluid_Electrolyte_Disorder  Cardiac_Arrhythmia  Charlson_Comorbidity_Index  Emergency ...
+-1.2247  0.3333  0.1601  -0.2032  1.2865 ...
+```
 
 **## Usage**
 
 Build the Graph: 
-python build_graph_delirium.py --dataset synthetic_data
+python build_graph_delirium.py --dataset sample_data
 
 2. **Train Tab-BertGCN:**
 
-python train_tab_bert_gcn.py --dataset synthetic_data 
+python train_tab_bert_gcn.py --dataset sample_data 
